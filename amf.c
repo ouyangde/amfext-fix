@@ -1178,7 +1178,7 @@ static void amf3_serialize_object(amf_serialize_output buf,zval**struc, amf_seri
 		return;
 	}
 
-	if(strcmp(className, "stdclass") == 0)  /*  never for resource */
+	if(strcmp(className, "stdClass") == 0)  /*  never for resource */
 		amf3_serialize_object_default(buf, Z_OBJPROP_PP(struc), "",0,var_hash TSRMLS_CC);
 	else
 	{
@@ -1387,7 +1387,7 @@ static void amf0_serialize_object(amf_serialize_output buf,zval**struc, amf_seri
 		return;
 	}
 
-	if(strcmp(className, "stdclass") == 0)
+	if(strcmp(className, "stdClass") == 0)
 	{
 		amf_write_byte(buf,AMF0_OBJECT);
 		amf0_serialize_objectdata(buf, Z_OBJPROP_PP(struc), 0, var_hash TSRMLS_CC);
