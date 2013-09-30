@@ -100,7 +100,7 @@ enum AMF0Codes { AMF0_NUMBER, AMF0_BOOLEAN, AMF0_STRING, AMF0_OBJECT, AMF0_MOVIE
 enum AMF3Codes { AMF3_UNDEFINED,AMF3_NULL,AMF3_FALSE,AMF3_TRUE,AMF3_INTEGER,AMF3_NUMBER,AMF3_STRING,AMF3_XML, AMF3_DATE, AMF3_ARRAY,AMF3_OBJECT, AMF3_XMLSTRING,AMF3_BYTEARRAY};
 
 /**  return values for callbacks */
-enum AMFCallbackResult { AMFC_RAW, AMFC_XML, AMFC_OBJECT, AMFC_TYPEDOBJECT, AMFC_ANY, AMFC_ARRAY,AMFC_NONE,AMFC_BYTEARRAY};
+enum AMFCallbackResult { AMFC_RAW, AMFC_XML, AMFC_OBJECT, AMFC_TYPEDOBJECT, AMFC_ANY, AMFC_ARRAY,AMFC_NONE,AMFC_BYTEARRAY, AMFC_EXTERNAL};
 
 /**  flags passed to amf_encode and amf_decode */
 enum AMFFlags { AMF_AMF3 = 1, AMF_BIGENDIAN=2,AMF_ASSOC=4,AMF_POST_DECODE = 8,AMF_AS_STRING_BUILDER = 16, AMF_TRANSLATE_CHARSET = 32,AMF_TRANSLATE_CHARSET_FAST = 32|64};
@@ -1279,6 +1279,12 @@ static void amf3_serialize_object(amf_serialize_output buf,zval**struc, amf_seri
 			}
 			break;
 		case AMFC_ANY: amf3_serialize_var(buf, resultValue, var_hash TSRMLS_CC); break;
+		case AMFC_EXTERNAL:
+			// all three lower bits have to be 1
+			amf3_write_objecthead(buf, 7 AMFTSRMLS_CC);
+			amf3_write_string(buf, className,classNameLen,AMF_STRING_AS_TEXT,var_hash TSRMLS_CC);
+			amf3_serialize_var(buf, resultValue, var_hash TSRMLS_CC);
+			break;
 		case AMFC_NONE: amf_write_byte(buf,AMF3_UNDEFINED); break;
 		case AMFC_BYTEARRAY:
 			if(Z_TYPE_PP(resultValue) == IS_STRING)
