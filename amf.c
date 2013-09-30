@@ -2921,8 +2921,9 @@ static int amf3_unserialize_var(zval **rval, const unsigned char **p, const unsi
 		{
 			int iIndex;
 			int maxIndex = handle >> 1;
-			HashTable * htOutput = HASH_OF(*rval);
+			HashTable * htOutput;
 			amf_array_init(*rval, maxIndex TSRMLS_CC); 
+			htOutput = HASH_OF(*rval);
 			 /* zval_add_ref(rval) */
 			amf_put_in_cache(&(var_hash->objects),*rval);
 
