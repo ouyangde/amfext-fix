@@ -30,6 +30,15 @@
 #include "ext/standard/info.h"
 #include "stdlib.h"
 
+#if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 3) || (PHP_MAJOR_VERSION >= 6)
+#undef ZVAL_REFCOUNT
+#undef ZVAL_ADDREF
+#undef ZVAL_DELREF
+#define ZVAL_REFCOUNT Z_REFCOUNT_P
+#define ZVAL_ADDREF Z_ADDREF_P
+#define ZVAL_DELREF Z_DELREF_P
+#endif
+
 /*  module Declarations {{{1*/
 
 static function_entry amf_functions[] = {
@@ -1185,7 +1194,7 @@ static void amf3_serialize_object(amf_serialize_output buf,zval**struc, amf_seri
 		int resultType = AMFC_TYPEDOBJECT;
 		int resultValueLength = 0;
 		zval** resultValue = struc;
-		int deallocResult = (*struc)->refcount;
+		int deallocResult = ZVAL_REFCOUNT(*struc);
 
 		resultType = amf_perform_serialize_callback(struc, &className,&classNameLen,&resultValue,var_hash TSRMLS_CC);
 		
@@ -2676,7 +2685,7 @@ static int amf3_read_string(zval **rval, const unsigned char **p, const unsigned
 		}
 		else
 		{
-			newval->refcount--;
+			ZVAL_DELREF(newval);
 		}
 		*rval = newval;
 	}
