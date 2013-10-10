@@ -146,7 +146,7 @@ static void amf_zval_dtor(void *p)
 static void amf_class_dtor(void *p)
 {
 	zval **zval_ptr = (zval**)p;
-	zval_ptr_dtor(zval_ptr);
+	zval_dtor(*zval_ptr);
 }
 
 /**  context of serialization */
@@ -1134,7 +1134,7 @@ static int amf_perform_serialize_callback_event(int ievent, zval*arg0,zval** zRe
  *  \param className is the resulting class name of the class of the object
  *  \return
 */
-static int amf_perform_serialize_callback(zval**struc, const char **className, int * classNameLen, 
+static int amf_perform_serialize_callback(zval**struc, zval** zResult, const char **className, int * classNameLen, 
 									zval*** resultValue, amf_serialize_data_t * var_hash TSRMLS_DC)
 {
 	int resultType = AMFC_TYPEDOBJECT;
@@ -1143,13 +1143,18 @@ static int amf_perform_serialize_callback(zval**struc, const char **className, i
 	{
 		zval * zievent;
 		zval ** params[] = { struc,&zievent};
+		zval* zTmp = NULL;
 		zval* rresultValue = NULL;
 		MAKE_STD_ZVAL(zievent);
 		ZVAL_LONG(zievent, AMFE_MAP);
-		if(call_user_function_ex(CG(function_table), var_hash->callbackTarget, var_hash->callbackFx, &rresultValue, 2, params, 0, NULL TSRMLS_CC) == SUCCESS)
+		if(call_user_function_ex(CG(function_table), var_hash->callbackTarget, var_hash->callbackFx, &zTmp, 2, params, 0, NULL TSRMLS_CC) == SUCCESS)
 		{
-			if(rresultValue != NULL && Z_TYPE_PP(&rresultValue) == IS_ARRAY)
+			if(zTmp != NULL && Z_TYPE_PP(&zTmp) == IS_ARRAY)
 			{
+				MAKE_STD_ZVAL(*zResult);
+				ZVAL_NULL(*zResult);
+				COPY_PZVAL_TO_ZVAL(**zResult, zTmp);
+				rresultValue = *zResult;
 				zval**tmp;
 				HashTable * ht = HASH_OF(rresultValue);
 				if(zend_hash_index_find(ht, 0,(void**)&tmp) == SUCCESS)
@@ -1167,6 +1172,10 @@ static int amf_perform_serialize_callback(zval**struc, const char **className, i
 					}
 				}
 				 /* php_error_docref(NULL TSRMLS_CC, E_NOTICE, "amf custom %p => %p %d %s",struc, resultValue, resultType, *className) */
+			}
+			else if (zTmp != NULL)
+			{
+				zval_ptr_dtor(&zTmp);
 			}
 		}
 		zval_ptr_dtor(&zievent);
@@ -1195,14 +1204,17 @@ static void amf3_serialize_object(amf_serialize_output buf,zval**struc, amf_seri
 		int resultType = AMFC_TYPEDOBJECT;
 		int resultValueLength = 0;
 		zval** resultValue = struc;
+		zval* zResultValue = NULL;
 		int deallocResult = ZVAL_REFCOUNT(*struc);
 
-		resultType = amf_perform_serialize_callback(struc, &className,&classNameLen,&resultValue,var_hash TSRMLS_CC);
+		resultType = amf_perform_serialize_callback(struc, &zResultValue, &className,&classNameLen,&resultValue,var_hash TSRMLS_CC);
 		
 		if(Z_TYPE_PP(resultValue) == IS_RESOURCE)
 		{
 			php_error_docref(NULL TSRMLS_CC, E_NOTICE, "amf encoding callback. Resources should be transformed in something");			
 			amf_write_byte(buf,AMF3_UNDEFINED);
+			if (zResultValue != NULL)
+				zval_ptr_dtor(&zResultValue);
 			return;
 		}
 
@@ -1313,10 +1325,8 @@ static void amf3_serialize_object(amf_serialize_output buf,zval**struc, amf_seri
 			php_error_docref(NULL TSRMLS_CC, E_NOTICE, "amf encoding callback. unknown type %d", resultType);
 			break;
 		}
-		if(*resultValue != *struc)
-		{
-			zval_ptr_dtor(resultValue);
-		}
+		if (zResultValue != NULL)
+			zval_ptr_dtor(&zResultValue);
 	}
 }
 
@@ -1413,13 +1423,16 @@ static void amf0_serialize_object(amf_serialize_output buf,zval**struc, amf_seri
 		int resultType = AMFC_TYPEDOBJECT;	
 		int resultValueLength = 0;
 		zval** resultValue = struc;
+		zval* zResultValue = NULL;
 	
-		resultType = amf_perform_serialize_callback(struc, &className,&classNameLen,&resultValue,var_hash TSRMLS_CC);
+		resultType = amf_perform_serialize_callback(struc, &zResultValue, &className,&classNameLen,&resultValue,var_hash TSRMLS_CC);
 
 		if(Z_TYPE_PP(resultValue) == IS_RESOURCE)
 		{
 			php_error_docref(NULL TSRMLS_CC, E_NOTICE, "amf encoding callback. Resources should be transformed in something");			
 			amf_write_byte(buf,AMF0_UNDEFINED);
+			if (zResultValue != NULL)
+				zval_ptr_dtor(&zResultValue);
 			return;		
 		}
 
@@ -1514,10 +1527,8 @@ static void amf0_serialize_object(amf_serialize_output buf,zval**struc, amf_seri
 			php_error_docref(NULL TSRMLS_CC, E_NOTICE, "amf encoding callback. unknown type %d", resultType);
 			break;
 		}
-		if(*resultValue != *struc)
-		{
-			zval_ptr_dtor(resultValue);
-		}
+		if (zResultValue != NULL)
+			zval_ptr_dtor(&zResultValue);
 	}
 }
 
