@@ -146,7 +146,7 @@ static void amf_zval_dtor(void *p)
 static void amf_class_dtor(void *p)
 {
 	zval **zval_ptr = (zval**)p;
-	zval_dtor(*zval_ptr);
+	zval_ptr_dtor(zval_ptr);
 }
 
 /**  context of serialization */
@@ -519,6 +519,7 @@ static void amf_serialize_output_get(amf_serialize_output buf, zval * result)
 	}
 	while(cur != head);
 	ZVAL_STRINGL(result, bcp, buf->length,1);
+    efree(bcp);
 }
 
 /**  destructor of the buffer */
@@ -566,9 +567,9 @@ typedef amf_serialize_output_t *amf_serialize_output;
 /**  initializes a zval to a HashTable of zval with a possible number of items */
 static int amf_array_init(zval *arg, int count TSRMLS_DC)
 {
-	ALLOC_HASHTABLE_REL(arg->value.ht);
+	ALLOC_HASHTABLE(arg->value.ht);
 
-	zend_hash_init(arg->value.ht, count, NULL, ZVAL_PTR_DTOR, 0 ZEND_FILE_LINE_RELAY_CC);
+	zend_hash_init(arg->value.ht, count, NULL, ZVAL_PTR_DTOR, 0);
 	arg->type = IS_ARRAY;
 	return SUCCESS;
 }
@@ -2405,6 +2406,7 @@ PHP_FUNCTION(amf_encode)
 		tpbuf = (amf_serialize_output) zend_fetch_resource( zzOutputSB TSRMLS_CC, -1, PHP_AMF_STRING_BUILDER_RES_NAME, NULL, 1, amf_serialize_output_resource_reg);	
 		if(tpbuf != NULL)
 		{
+            amf_serialize_output_dtor(pbuf);
 			pbuf = tpbuf;
 			asSB = 1;
 			 /* ZVAL_ADDREF(*zzOutputSB) */
@@ -2444,7 +2446,7 @@ PHP_FUNCTION(amf_encode)
 	}
 
 	 /*  deallocate if it was wast */
-	if(asSB == 1)
+	if(asSB != 1)
 	{
 		amf_serialize_output_dtor(&buf);
 	}
@@ -2455,8 +2457,8 @@ PHP_FUNCTION(amf_encode)
 	RETURN_STRINGL(membuf, memsize, 1);
 	php_stream_close(pbuf);
 	}
-	amf_SERIALIZE_DTOR(var_hash,zzCallback)
 #endif
+	amf_SERIALIZE_DTOR(var_hash,zzCallback)
 }
 
 /*  Decoding {{{1*/
